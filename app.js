@@ -35,15 +35,15 @@ const convertDbObjectToResponseObject = (dbObject) => {
   };
 };
 
-const convertDbObjectToResponseObjectDistrict = (dbObject) => {
+const convertDbObjectToResponseObjectDistrict = (dbObjectDistrict) => {
   return {
-    districtId: dbObject.district_id,
-    districtName: dbObject.district_name,
-    stateId: dbObject.state - id,
-    cases: dbObject.cases,
-    cured: dbObject.cured,
-    active: dbObject.active,
-    deaths: dbObject.deaths,
+    districtId: dbObjectDistrict.district_id,
+    districtName: dbObjectDistrict.district_name,
+    stateId: dbObjectDistrict.state - id,
+    cases: dbObjectDistrict.cases,
+    cured: dbObjectDistrict.cured,
+    active: dbObjectDistrict.active,
+    deaths: dbObjectDistrict.deaths,
   };
 };
 
@@ -54,13 +54,13 @@ app.get("/states/", async (request, response) => {
     FROM
     state;`;
 
-  const states = await db.all(getStatesQuery);
+  const allStates = await db.all(getStatesQuery);
   response.send(
-    states.map((eachObject) => convertDbObjectToResponseObject(eachObject))
+    allStates.map((eachObject) => convertDbObjectToResponseObject(eachObject))
   );
 });
 
-app.get("/states/:stateId/", async (request, response) => {
+app.get("/states/stateId/", async (request, response) => {
   const { stateId } = request.params;
   const getStateQuery = `
     SELECT
@@ -104,13 +104,19 @@ app.get("/districts/:districtId/", async (request, response) => {
   const { districtId } = request.params;
   const getDistrictQuery = `
     SELECT
-      *
+      district_id As districtId,
+      district_name As districtName,
+      state_id As stateId,
+      cases,
+      cured, 
+      active,
+      deaths
     FROM
       district
     WHERE
       district_id = ${districtId};`;
   const district = await db.get(getDistrictQuery);
-  response.send(convertDbObjectToResponseObjectDistrict(district));
+  response.send(district);
 });
 
 app.delete("/districts/:districtId/", async (request, response) => {
@@ -157,20 +163,20 @@ app.get("/states/:stateId/stats/", async (request, response) => {
   const { stateId } = request.params;
   const getStatsQuery = `
     SELECT
-      SUM(cases) AS total_cases,
-      SUM(cured) AS total_cured,
-      SUM(active) AS total_active,
-      SUM(deaths) AS total_deaths
+      SUM(cases),
+      SUM(cured),
+      SUM(active),
+      SUM(deaths)
     FROM
       district
     WHERE
-      state_id = ${staterId};`;
+      state_id = ${stateId};`;
   const stats = await db.get(getStatsQuery);
   response.send({
-    totalCases: stats["total_cases"],
-    totalCured: stats["total_cured"],
-    totalActive: stats["total_active"],
-    totalDeaths: stats["total_deaths"],
+    totalCases: stats["SUM(cases)"],
+    totalCured: stats["SUM(cured)"],
+    totalActive: stats["SUM(active)"],
+    totalDeaths: stats["SUM(deaths)"],
   });
 });
 
@@ -184,7 +190,7 @@ district
 WHERE 
 district_id = ${districtId};
 `;
-  const getDistrictIdQueryResponse = await database.get(getDistrictIdQuery);
+  const getDistrictIdQueryResponse = await db.get(getDistrictIdQuery);
 
   const getStateNameQuery = `
 SELECT
@@ -195,7 +201,7 @@ state
 WHERE
 state_id = ${getDistrictIdQueryResponse.state_id};
 `;
-  const getStateNameQueryResponse = await database.get(getStateNameQuery);
+  const getStateNameQueryResponse = await db.get(getStateNameQuery);
   response.send(getStateNameQueryResponse);
 });
 
